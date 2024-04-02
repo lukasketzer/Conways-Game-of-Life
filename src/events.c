@@ -13,7 +13,8 @@ void handleMouseButtonDown(SDL_MouseButtonEvent *event, CGOL *cgol){
             if (event->button == SDL_BUTTON_LEFT) {
                 cellWidth = (cellWidth = SCREEN_WIDTH / cgol->width) != 0 ? cellWidth : 1;
                 cellHeight = (cellHeight = SCREEN_HEIGHT / cgol->height) != 0 ? cellHeight : 1;
-                CGOL_createCell(cgol, event->x / cellWidth, event->y / cellHeight);
+                CGOL_setValue(cgol, event->x / cellWidth, event->y / cellHeight);
+                
             } else if (event->button == SDL_BUTTON_RIGHT) {
                 CGOL_clear(cgol);
             }
@@ -24,7 +25,6 @@ void handleMouseButtonDown(SDL_MouseButtonEvent *event, CGOL *cgol){
     return;
 }
 
-// HACK: das ganze mit cellWidth ist einfach nicth schön aber es funktioniert (gilt auch für oben)
 void handleMouseMotion(SDL_MouseMotionEvent *event, CGOL *cgol) {
     usize cellWidth;
     usize cellHeight;
@@ -33,7 +33,7 @@ void handleMouseMotion(SDL_MouseMotionEvent *event, CGOL *cgol) {
             if (CHECKFLAGS(event->state, SDL_BUTTON_LMASK)) {
                 cellWidth = (cellWidth = SCREEN_WIDTH / cgol->width) != 0 ? cellWidth : 1;
                 cellHeight = (cellHeight = SCREEN_HEIGHT / cgol->height) != 0 ? cellHeight : 1;
-                CGOL_createCell(cgol, event->x / cellWidth, event->y / cellHeight);
+                CGOL_setValue(cgol, event->x / cellWidth, event->y / cellHeight);
             }
             break;
         default:

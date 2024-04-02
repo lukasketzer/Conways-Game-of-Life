@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -8,98 +9,128 @@
 #include "conway.h"
 
 
-void CGOL_fillUniverseRandom(CGOL *cgol, u32 chance) {
-    for(usize i = 0; i < cgol->universeSize; i++) {
-        if ((rand() % chance) == 0) {
-            cgol->universe[i] = 1;
-        }
-    } 
+
+void CGOL_free(CGOL *cgol){
+    if (!cgol) return;
+    if (cgol->universe) free(cgol->universe);
+    free(cgol);
+}
+
+u8 CGOL_getValue(CGOL *cgol, usize x, usize y) {
+    if (x > cgol->width  || y > cgol->height ) return 0;
+    usize idx = (cgol->width * y + x); 
+    usize part = idx >> 6; // div by 64
+    u8 offset = idx % 64;
+     
+    return cgol->universe[part] & (1LL << offset) ? 1 : 0;
+}
+
+void CGOL_setValue(CGOL *cgol, usize x, usize y){
+    if (x > cgol->width || y > cgol->height) return;
+    usize idx = (cgol->width * y + x); 
+    usize part = idx >> 6; // div by 64
+    u8 offset = idx % 64;
+    
+    cgol->universe[part] |= 1LL << offset ;
 }
 
 
-void CGOL_clear(CGOL *cgol) {
-    free(cgol->universe);
-    u8 *universe = calloc(cgol->universeSize, sizeof(u8));
-    if(!universe) {
-        fprintf(stderr, "Error while allocating memory");
+u64* allocUniverse(usize width, usize height, usize *universeSize, usize *bufferSize){
+    if (__builtin_umull_overflow(width, height, universeSize)) {
+        fprintf(stderr, "width and hight are too large");
         exit(EXIT_FAILURE);
     }
+    *bufferSize = (*universeSize / 64) + 1;
+    u64 *universe = calloc(*bufferSize, sizeof(u64));
+
+    if(!universe) {
+        fprintf(stderr, "Error while allocating board");
+        exit(EXIT_FAILURE);
+    }
+    return universe;
+}
+
+// DONE
+void CGOL_fillUniverseRandom(CGOL *cgol, u32 chance) {
+    for(usize y = 0; y < cgol->height; y++) {
+        for(usize x = 0; x < cgol->width; x++) {
+            if ((rand() % chance) == 0) {
+                CGOL_setValue(cgol, x , y);
+            }
+        }
+    }
+}
+
+// DONE
+void CGOL_clear(CGOL *cgol) {
+    free(cgol->universe);
+    u64 *universe = allocUniverse(cgol->width, cgol->height, &cgol->universeSize, &cgol->bufferSize);
     cgol->universe = universe;
     return;
 }
 
+
+
 void CGOL_print(CGOL *cgol) {
     for(usize y = 0; y < cgol->height; y++) {
         for(usize x = 0; x < cgol->width; x++) {
-            cgol->universe[y * cgol->width + x] ? printf("■") : printf("□");
+            CGOL_getValue(cgol, x, y) ?  printf("■") : printf("□");
         }
         printf("\n");
     }
 }
 
-u8 getValue(CGOL *cgol, usize x, usize y) {
-    // HACK: Veiileicht gibt es hier einen wraparound der dann falsch ist
-    if (x > cgol->width  || y > cgol->height ) {
-        return 0;
-    }
-    return cgol->universe[y * cgol->width + x] ? 1 : 0;
-}
-
 u8 getSurroundingValues(CGOL *cgol, usize x, usize y) {
     u8 value = 0; 
-    value += getValue(cgol, x-1, y-1);
-    value += getValue(cgol, x,   y-1);
-    value += getValue(cgol, x+1, y-1);
+    value += CGOL_getValue(cgol, x-1, y-1);
+    value += CGOL_getValue(cgol, x,   y-1);
+    value += CGOL_getValue(cgol, x+1, y-1);
 
-    value += getValue(cgol, x-1, y);
-    value += getValue(cgol, x+1, y);
+    value += CGOL_getValue(cgol, x-1, y);
+    value += CGOL_getValue(cgol, x+1, y);
 
-    value += getValue(cgol, x-1, y+1);
-    value += getValue(cgol, x,   y+1);
-    value += getValue(cgol, x+1, y+1);
+    value += CGOL_getValue(cgol, x-1, y+1);
+    value += CGOL_getValue(cgol, x,   y+1);
+    value += CGOL_getValue(cgol, x+1, y+1);
 
     return value;
 }
 
-void updateBoard(CGOL *cgol) {
-    // TODO: Umschrieben, so dass das INPLACE gemacht wird
+CGOL* updateBoard(CGOL *cgol) {
     u8 neighbours;
-    u8 alive;
-    usize idx;
-    u8 *updatedUniverse = calloc(cgol->universeSize, sizeof(u8));
-    if(!updatedUniverse) {
-        fprintf(stderr, "Error while allocating board");
-        exit(EXIT_FAILURE);
-    }
+    bool alive;
     
+    CGOL *new_cgol = CGOL_createWorld(cgol->width, cgol->height);
+
     for(usize y = 0; y < cgol->height; y++) {
         for(usize x = 0; x < cgol->width; x++) {
             neighbours = getSurroundingValues(cgol, x, y);
-            idx = y * cgol->width + x;
-            alive = cgol->universe[idx];
+            alive = CGOL_getValue(cgol, x, y);
 
             // Gamerules
             if (!alive && neighbours == 3){
-                updatedUniverse[idx] = 1;          // lives
+                CGOL_setValue(new_cgol, x, y);            // lives
             } else if (alive && neighbours < 2) {
-                continue;                       // dies
+                continue;                                       // dies
             } else if (alive && (neighbours == 2 || neighbours == 3)) {
-                updatedUniverse[idx] = 1;          // lives
+                CGOL_setValue(new_cgol, x, y);                // lives
             } else if (alive && neighbours > 3) {
-                continue;                       // dies
+                continue;                                       // dies
             } else {
-                continue;                       // dies
+                continue;                                       // dies
             }
 
         }
     }
-    free(cgol->universe);
-    cgol->universe = updatedUniverse;
+    CGOL_free(cgol);
+    return new_cgol;
 }
+
 
 
 CGOL* CGOL_createWorld(usize width, usize height) {
     usize universeSize;
+    usize bufferSize;
     CGOL *cgol = (CGOL*) malloc(sizeof(CGOL));
 
     if(!cgol) {
@@ -107,43 +138,25 @@ CGOL* CGOL_createWorld(usize width, usize height) {
         exit(EXIT_FAILURE);
     }
 
-    if (__builtin_umull_overflow(width, height, &universeSize)) {
-        fprintf(stderr, "width and hight are too large");
-        exit(EXIT_FAILURE);
-    }
-
-    u8 *universe = calloc(universeSize, sizeof(u8));
-    if(!universe) {
-        fprintf(stderr, "Error while allocating board");
-        exit(EXIT_FAILURE);
-    }
-
+    u64 *universe = allocUniverse(width, height, &universeSize, &bufferSize);
 
     
     cgol->universe = universe;
     cgol->universeSize = universeSize;
+    cgol->bufferSize = bufferSize;
     cgol->width = width;
     cgol->height = height;
 
     return cgol;
 }
 
-void CGOL_iterate(CGOL *cgol) {
+CGOL* CGOL_iterate(CGOL *cgol) {
     if (!cgol) {
         fprintf(stderr, "No object supplied. Maybe you didn't initalize the config");
-        return;
+        exit(EXIT_FAILURE);
     }
-    updateBoard(cgol);
-    return;
+    return updateBoard(cgol);
 }
-
-void CGOL_createCell(CGOL *cgol, usize x, usize y){
-    if (x > cgol->width || y > cgol->height) return;
-
-    cgol->universe[y * cgol->width + x] = 1;
-}
-
-
 
 
 

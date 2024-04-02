@@ -40,13 +40,12 @@ int main() {
     App app;
     CGOL *cgol;
     srand(time(NULL));
-    cgol = CGOL_createWorld(100, 100);
+    cgol = CGOL_createWorld(20, 20);
     CGOL_fillUniverseRandom(cgol, 5);
-
 
     initSDL(&app);
 
-    f32 fps = 25.0; 
+    f32 fps = 5.0; 
     u32 delay;
     
     while(1) {
@@ -54,7 +53,7 @@ int main() {
         handleEvents(cgol);
 
         drawUniverseCGOL(&app, cgol, false);
-        CGOL_iterate(cgol);
+        cgol = CGOL_iterate(cgol);
         
         presentScene(&app);
         delay = (u32) ((1.0/fps) * 1000.0);

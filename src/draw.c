@@ -19,7 +19,8 @@ void presentScene(App *app)
     SDL_RenderPresent(app->renderer);
 }
 
-// BUG: Es wird immer eine untere Zeile mit Pixeln gerednert + segfault
+// BUG: Am unteren rand werden pixel gerendert, die warscheinlich nicht zum board gehört (drübermalen löst segfault aus)
+// und wenn man an den rechten rand mal, wird es auch links angezeigt
 void drawUniverseCGOL(App *app, CGOL *cgol, bool rainbow){
     SDL_Rect cell;
     usize cellWidth = (cellWidth = SCREEN_WIDTH / cgol->width) != 0 ? cellWidth : 1;
@@ -31,7 +32,8 @@ void drawUniverseCGOL(App *app, CGOL *cgol, bool rainbow){
             cell.y = y * cellHeight;
             cell.w = cellWidth;
             cell.h = cellHeight;
-            if (cgol->universe[y * cgol->width + x]) {
+
+            if (CGOL_getValue(cgol, x, y)) {
                 if(!rainbow) {
                     SDL_SetRenderDrawColor(app->renderer, 255, 255, 255, 255);
                 } else {

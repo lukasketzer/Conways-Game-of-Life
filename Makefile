@@ -1,6 +1,7 @@
 CC = gcc
+# CFLAGS = -Wall -Wextra -Wpedantic -g  `sdl2-config --cflags --libs` -fsanitize=address
 CFLAGS = -Wall -Wextra -Wpedantic -g  `sdl2-config --cflags --libs`
-FILES = ./src/*c
+FILES = $(filter-out ./src/conway_new.c, $(wildcard ./src/*.c))
 OUTPUT = conway
 
 .PHONY: all clean
@@ -10,7 +11,7 @@ main:
 	$(CC) -o $(OUTPUT) $(FILES) $(CFLAGS)  
 
 conway: clean
-	$(CC) -o conway_new ./src/conway_new.c $(CFLAGS)
+	$(CC) -o conway ./src/conway.c $(CFLAGS)
 
 clean:
 	rm -rf $(OUTPUT) conway_new
