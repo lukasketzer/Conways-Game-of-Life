@@ -45,7 +45,7 @@ int main() {
 
     initSDL(&app);
 
-    f32 fps = 5.0; 
+    f32 fps = 20.0; 
     u32 delay;
     
     while(1) {
